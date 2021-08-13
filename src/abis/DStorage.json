@@ -4238,6 +4238,68 @@
     "version": "0.5.16+commit.9c3226ce.Emscripten.clang"
   },
   "networks": {
+    "4": {
+      "events": {
+        "0x6e95bbaa37a5fdec42a312e049dea2fe6160ebe659214d3409b4f91f164c2f52": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "fileId",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "string",
+              "name": "fileHash",
+              "type": "string"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "fileSize",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "string",
+              "name": "fileType",
+              "type": "string"
+            },
+            {
+              "indexed": false,
+              "internalType": "string",
+              "name": "fileName",
+              "type": "string"
+            },
+            {
+              "indexed": false,
+              "internalType": "string",
+              "name": "fileDescription",
+              "type": "string"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "uploadTime",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "address payable",
+              "name": "uploader",
+              "type": "address"
+            }
+          ],
+          "name": "FileUploaded",
+          "type": "event"
+        }
+      },
+      "links": {},
+      "address": "0xC59EE3B70C9816AEFA0dE9C523063a41d855f53B",
+      "transactionHash": "0x3ed00d9f9aea27c7fb12e1d6306c991a8e91aaab3b1f4986948140b5f851c59a"
+    },
     "5777": {
       "events": {
         "0x6e95bbaa37a5fdec42a312e049dea2fe6160ebe659214d3409b4f91f164c2f52": {
@@ -4297,12 +4359,12 @@
         }
       },
       "links": {},
-      "address": "0x53A3360f8B358D3E97dfBF4E3C37D8Cd16Ad7c62",
+      "address": "0xC59EE3B70C9816AEFA0dE9C523063a41d855f53B",
       "transactionHash": "0x1c2ce44f0c40768447d689d9e7a8c8b56cd0f54e90588c5a62ab6d3f2dd6be05"
     }
   },
   "schemaVersion": "3.3.1",
-  "updatedAt": "2021-08-11T15:20:47.526Z",
+  "updatedAt": "2021-08-12T22:20:59.352Z",
   "networkType": "ethereum",
   "devdoc": {
     "methods": {}

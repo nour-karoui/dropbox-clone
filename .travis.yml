@@ -1,0 +1,16 @@
+sudo: required
+language: generic
+services:
+  - docker
+
+deploy:
+  provider: elasticbeanstalk
+  region: "us-east-2"
+  app: "dstorage"
+  env: "Dstorage-env"
+  bucket_name: "elasticbeanstalk-us-east-2-786842203111"
+  bucket_path: "dstorage"
+  on:
+    branch: main
+  access_key_id: $AWS_ACCESS_KEY
+  secret_access_key: $AWS_SECRET_KEY
