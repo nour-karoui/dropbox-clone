@@ -2,7 +2,7 @@ From node
 
 WORKDIR '/app'
 
-COPY package.json .
+COPY package*.json ./
 RUN npm i
 
 COPY . .
