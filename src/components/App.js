@@ -29,7 +29,7 @@ class App extends Component {
       window.web3 = new Web3(window.web3.currentProvider)
     }
     else {
-      window.alert('Non ethereum browser detected, you should consider trying metamask')
+      window.alert('Non Ethereum browser detected, you should consider trying metamask')
     }
   }
 
