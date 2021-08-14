@@ -141,17 +141,15 @@ class App extends Component {
   render() {
     return (
       <div>
-        {/*<Navbar account={this.state.account} />*/}
-        {/*{ this.state.loading*/}
-        {/*  ? <div id="loader" className="text-center mt-5"><p>Loading...</p></div>*/}
-        {/*  : <Main*/}
-        {/*      files={this.state.files}*/}
-        {/*      captureFile={this.captureFile}*/}
-        {/*      uploadFile={this.uploadFile}*/}
-        {/*    />*/}
-        {/*}*/}
-        hello world !
-        change something
+        <Navbar account={this.state.account} />
+        { this.state.loading
+          ? <div id="loader" className="text-center mt-5"><p>Loading...</p></div>
+          : <Main
+              files={this.state.files}
+              captureFile={this.captureFile}
+              uploadFile={this.uploadFile}
+            />
+        }
       </div>
     );
   }
