@@ -6,10 +6,10 @@ services:
 deploy:
   provider: elasticbeanstalk
   region: "us-east-2"
-  app: "dstorage"
-  env: "Dstorage-env"
+  app: "dstorage-react"
+  env: "Dstoragereact-env"
   bucket_name: "elasticbeanstalk-us-east-2-786842203111"
-  bucket_path: "dstorage"
+  bucket_path: "dstorage-react"
   on:
     branch: main
   access_key_id: $AWS_ACCESS_KEY
