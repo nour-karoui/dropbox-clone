@@ -1,4 +1,4 @@
-FROM node:14.15.0
+FROM node:latest
 
 WORKDIR '/app'
 
@@ -10,5 +10,3 @@ RUN npm run build
 
 FROM nginx
 COPY --from=0 /app/build /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
