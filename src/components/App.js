@@ -1,4 +1,4 @@
-import DStorage from '../abis/DStorage.json'
+import DStorage from './abis/DStorage.json'
 import React, { Component } from 'react';
 import Navbar from './Navbar'
 import Main from './Main'
