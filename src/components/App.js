@@ -2,7 +2,8 @@ import DStorage from './abis/DStorage.json'
 import React, { Component } from 'react';
 import Navbar from './Navbar'
 import Main from './Main'
-import Web3 from 'web3';
+import Web3 from 'web3'
+import Tx from 'ethereumjs-tx'
 import './App.css';
 
 //Declare IPFS
@@ -16,7 +17,7 @@ const ipfs = ipfsClient({
 class App extends Component {
 
   async componentWillMount() {
-    await this.loadWeb3()
+    // await this.loadWeb3()
     await this.loadBlockchainData()
   }
 
@@ -35,13 +36,16 @@ class App extends Component {
 
   async loadBlockchainData() {
     //Declare Web3
-    const web3 = window.web3
+    const web3 = new Web3(new Web3.providers.HttpProvider('https://rinkeby.infura.io/v3/aff0fe260d2b4c4f8aca7d426d1b90f8'))
     console.log(web3)
+    this.setState({web3})
     //Load account
 
-    const accounts = await web3.eth.getAccounts();
-    console.log(accounts)
-    this.setState({account: accounts[0]})
+    //const accounts = await web3.eth.getAccounts();
+    const account = web3.eth.accounts.privateKeyToAccount('b63e3f7051cf1226b82d844f1ac8b02ec7f03c2eb176d2d1f2df46a6a4836584');
+    console.log(account)
+    localStorage.setItem('privateKey', account.privateKey)
+    this.setState({account: account.address})
 
     // Network ID
     const networkId = await web3.eth.net.getId()
@@ -92,7 +96,6 @@ class App extends Component {
     ipfs.add(this.state.buffer, (error, result) => {
       console.log('IPFS RESULT', result)
       console.log('IPFS RESULT', result.size)
-
       //Check If error
       //Return error
 
@@ -108,21 +111,54 @@ class App extends Component {
       }
 
       //Call smart contract uploadFile function
+      const uploadFileFunction = this.state.dstorage.methods.uploadFile(result[0].hash, result[0].size, this.state.type, this.state.name, description)
+      const functionAbi = uploadFileFunction.encodeABI()
+      console.log('getting gas estimate ', functionAbi)
 
-      this.state.dstorage.methods.uploadFile(result[0].hash, result[0].size, this.state.type, this.state.name, description)
-          .send({ from: this.state.account })
-          .on('transactionHash', (hash) => {
-            this.setState({
-              loading: false,
-              type: null,
-              name: null
-            })
-            window.location.reload()
+      uploadFileFunction.estimateGas({from: this.state.account}).then(gasAmount => {
+        gasAmount = gasAmount.toString(16);
+
+        console.log("Estimated gas: " + gasAmount);
+
+        this.state.web3.eth.getTransactionCount(this.state.account).then(_nonce => { //this will generate Nonce
+          const nonce = _nonce.toString(16);
+
+          console.log("Nonce: " + nonce);
+          const txParams = {
+            gasPrice: gasAmount,
+            gasLimit: 3000000,
+            to: "0xC59EE3B70C9816AEFA0dE9C523063a41d855f53B",
+            data: functionAbi,
+            from: this.state.account,
+            nonce: '0x' + nonce
+          };
+
+          const tx = new Tx(txParams);
+          tx.sign(Buffer.from('b63e3f7051cf1226b82d844f1ac8b02ec7f03c2eb176d2d1f2df46a6a4836584', 'hex'));          // here Tx sign with private key
+
+          const serializedTx = tx.serialize();
+
+          // here performing singedTransaction
+          this.state.web3.eth.sendSignedTransaction('0x' + serializedTx.toString('hex')).on('receipt', receipt => {
+            console.log(receipt);
           })
-          .on('error', (e) =>{
-            window.alert('Error')
-            this.setState({loading: false})
-          })
+        });
+      })
+      // this.state.dstorage.methods.uploadFile(result[0].hash, result[0].size, this.state.type, this.state.name, description)
+      //     .send({ from: this.state.account })
+      //     .on('transactionHash', (hash) => {
+      //       this.setState({
+      //         loading: false,
+      //         type: null,
+      //         name: null
+      //       })
+      //       window.location.reload()
+      //     })
+      //     .on('error', (e) =>{
+      //       window.alert('Error')
+      //       console.log(e)
+      //       this.setState({loading: false})
+      //     })
     })
 
 
