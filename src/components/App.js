@@ -5,6 +5,11 @@ import Main from './Main'
 import Web3 from 'web3'
 import Tx from 'ethereumjs-tx'
 import './App.css';
+import crypto from 'crypto';
+import { encrypt, decrypt, PrivateKey } from 'eciesjs'
+import EthCrypto from 'eth-crypto';
+const fs = require('fs')
+
 
 //Declare IPFS
 const ipfsClient = require('ipfs-http-client')
@@ -42,8 +47,11 @@ class App extends Component {
     //Load account
 
     //const accounts = await web3.eth.getAccounts();
-    const account = web3.eth.accounts.privateKeyToAccount('b63e3f7051cf1226b82d844f1ac8b02ec7f03c2eb176d2d1f2df46a6a4836584');
+    const account = web3.eth.accounts.privateKeyToAccount('b63e3f7051cf1226b82d844f1ac8b02ec7f03c2eb176d2d1f2df46a6a4836584')
     console.log(account)
+    const publicKey = EthCrypto.publicKeyByPrivateKey('b63e3f7051cf1226b82d844f1ac8b02ec7f03c2eb176d2d1f2df46a6a4836584')
+    console.log(publicKey)
+    this.setState({publicKey})
     localStorage.setItem('privateKey', account.privateKey)
     this.setState({account: account.address})
 
@@ -68,7 +76,6 @@ class App extends Component {
     } else {
       window.alert('DStorage contract not deployed to detected network.')
     }
-
   }
 
   // Get file from user
@@ -90,10 +97,14 @@ class App extends Component {
   }
 
   //Upload File
-  uploadFile = description => {
+  uploadFile = async description => {
     console.log('submitting file to ipfs')
+    const encrypted = encrypt(this.state.publicKey, this.state.buffer)
+    console.log(this.state.buffer)
+    const dec= decrypt('b63e3f7051cf1226b82d844f1ac8b02ec7f03c2eb176d2d1f2df46a6a4836584', encrypted)
+    console.log(dec)
     //Add file to the IPFS
-    ipfs.add(this.state.buffer, (error, result) => {
+    ipfs.add(encrypted, (error, result) => {
       console.log('IPFS RESULT', result)
       console.log('IPFS RESULT', result.size)
       //Check If error
