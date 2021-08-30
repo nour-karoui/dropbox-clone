@@ -20,6 +20,7 @@ And to ensure immutability, we saved the file's hash on an Ethereum smart contra
 
 * Ethereum
 * Solidity
+* truffle
 
 #### Storing Files:
 
