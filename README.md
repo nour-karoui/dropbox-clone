@@ -1,5 +1,9 @@
 ## ``` Decentralized File Storage. ```
 
+## What Is It ?
+this is a secure dropbox clone, each file is encrypted with a user's public key and stored in IPFS.
+Only that user can decrypt the file using his private key.
+And to ensure immutability, we saved the file's hash on an Ethereum smart contract, **check the diagram bellow**.
 
 ## 🔧 Project Diagram:
 
