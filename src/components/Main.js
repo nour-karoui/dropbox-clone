@@ -66,12 +66,12 @@ class Main extends Component {
                           </a>
                         </td>
                         <td>
-                          <a
-                              href={"https://ipfs.infura.io/ipfs/" + file.fileHash}
+                          <button
+                              onClick={() => {this.props.downloadFile("https://ipfs.infura.io/ipfs/" + file.fileHash)}}
                               rel="noopener noreferrer"
-                              target="_blank">
+                              >
                             {file.fileHash.substring(0,10)}...
-                          </a>
+                          </button>
                         </td>
                       </tr>
                       </thead>

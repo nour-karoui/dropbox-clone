@@ -5,11 +5,11 @@ import Main from './Main'
 import Web3 from 'web3'
 import Tx from 'ethereumjs-tx'
 import './App.css';
-import crypto from 'crypto';
-import { encrypt, decrypt, PrivateKey } from 'eciesjs'
+import { encrypt, decrypt } from 'eciesjs'
 import EthCrypto from 'eth-crypto';
-const fs = require('fs')
-
+import axios from 'axios'
+const toBuffer = require('blob-to-buffer')
+require('dotenv').config()
 
 //Declare IPFS
 const ipfsClient = require('ipfs-http-client')
@@ -22,37 +22,20 @@ const ipfs = ipfsClient({
 class App extends Component {
 
   async componentWillMount() {
-    // await this.loadWeb3()
     await this.loadBlockchainData()
-  }
-
-  async loadWeb3() {
-    if(window.ethereum) {
-      window.web3 = new Web3(window.ethereum)
-      await window.ethereum.enable()
-    }
-    else if(window.web3) {
-      window.web3 = new Web3(window.web3.currentProvider)
-    }
-    else {
-      window.alert('Non Ethereum browser detected, you should consider trying metamask')
-    }
   }
 
   async loadBlockchainData() {
     //Declare Web3
-    const web3 = new Web3(new Web3.providers.HttpProvider('https://rinkeby.infura.io/v3/aff0fe260d2b4c4f8aca7d426d1b90f8'))
+    const web3 = new Web3(new Web3.providers.HttpProvider(process.env.REACT_APP_INFURA_URL))
     console.log(web3)
     this.setState({web3})
-    //Load account
 
-    //const accounts = await web3.eth.getAccounts();
-    const account = web3.eth.accounts.privateKeyToAccount('b63e3f7051cf1226b82d844f1ac8b02ec7f03c2eb176d2d1f2df46a6a4836584')
-    console.log(account)
-    const publicKey = EthCrypto.publicKeyByPrivateKey('b63e3f7051cf1226b82d844f1ac8b02ec7f03c2eb176d2d1f2df46a6a4836584')
-    console.log(publicKey)
+    //Load account
+    localStorage.setItem('privateKey', process.env.REACT_APP_PRIVATE_KEY)
+    const account = web3.eth.accounts.privateKeyToAccount(localStorage.getItem('privateKey'))
+    const publicKey = EthCrypto.publicKeyByPrivateKey(localStorage.getItem('privateKey'))
     this.setState({publicKey})
-    localStorage.setItem('privateKey', account.privateKey)
     this.setState({account: account.address})
 
     // Network ID
@@ -62,19 +45,24 @@ class App extends Component {
       // Assign contract
       const dstorage = new web3.eth.Contract(DStorage.abi, networkData.address)
       this.setState({ dstorage })
-      // Get files amount
-      const filesCount = await dstorage.methods.fileCount().call()
-      this.setState({ filesCount })
-      // Load files & sort by the newest
-
-      for (let i = filesCount; i >= 1; i--) {
-        const file = await dstorage.methods.files(i).call()
-        this.setState({
-          files: [...this.state.files, file]
-        })
-      }
+      // get files
+      await this.loadFiles()
     } else {
       window.alert('DStorage contract not deployed to detected network.')
+    }
+  }
+
+  loadFiles = async () => {
+    // Get files amount
+    const filesCount = await this.state.dstorage.methods.fileCount().call()
+    this.setState({ filesCount })
+    // Load files & sort by the newest
+
+    for (let i = filesCount; i >= 1; i--) {
+      const file = await this.state.dstorage.methods.files(i).call()
+      this.setState({
+        files: [...this.state.files, file]
+      })
     }
   }
 
@@ -100,18 +88,17 @@ class App extends Component {
   uploadFile = async description => {
     console.log('submitting file to ipfs')
     const encrypted = encrypt(this.state.publicKey, this.state.buffer)
-    console.log(this.state.buffer)
-    const dec= decrypt('b63e3f7051cf1226b82d844f1ac8b02ec7f03c2eb176d2d1f2df46a6a4836584', encrypted)
-    console.log(dec)
+    this.setState({loading: true})
+
     //Add file to the IPFS
     ipfs.add(encrypted, (error, result) => {
       console.log('IPFS RESULT', result)
-      console.log('IPFS RESULT', result.size)
       //Check If error
       //Return error
 
       if(error) {
         console.log(error)
+        this.setState({loading: false})
         return
       }
       //Set state to loading
@@ -145,44 +132,46 @@ class App extends Component {
           };
 
           const tx = new Tx(txParams);
-          tx.sign(Buffer.from('b63e3f7051cf1226b82d844f1ac8b02ec7f03c2eb176d2d1f2df46a6a4836584', 'hex'));          // here Tx sign with private key
+          tx.sign(Buffer.from(localStorage.getItem('privateKey'), 'hex'));          // here Tx sign with private key
 
           const serializedTx = tx.serialize();
 
           // here performing singedTransaction
-          this.state.web3.eth.sendSignedTransaction('0x' + serializedTx.toString('hex')).on('receipt', receipt => {
+          this.state.web3.eth.sendSignedTransaction('0x' + serializedTx.toString('hex')).on('receipt', async receipt => {
             console.log(receipt);
+            this.setState({loading: false})
+            window.location.reload()
           })
         });
       })
-      // this.state.dstorage.methods.uploadFile(result[0].hash, result[0].size, this.state.type, this.state.name, description)
-      //     .send({ from: this.state.account })
-      //     .on('transactionHash', (hash) => {
-      //       this.setState({
-      //         loading: false,
-      //         type: null,
-      //         name: null
-      //       })
-      //       window.location.reload()
-      //     })
-      //     .on('error', (e) =>{
-      //       window.alert('Error')
-      //       console.log(e)
-      //       this.setState({loading: false})
-      //     })
     })
+  }
 
-
+  // Decrypt and download file
+  downloadFile(url) {
+    axios({
+      url: url,
+      method: "GET",
+      responseType: "blob" // important
+    }).then(async response => {
+      const blob1 = new Blob([response.data])
+      toBuffer(blob1, function (err, buffer) {
+        if (err) throw err
+        const dec = decrypt(localStorage.getItem('privateKey'), buffer)
+        let blob = new Blob([dec], { type: 'application/pdf' });
+        let url = URL.createObjectURL(blob);
+        window.open(url);
+      })
+    });
   }
 
   //Set states
   constructor(props) {
     super(props)
     this.state = {
-      files: []
+      files: [],
+      loading: false
     }
-
-    //Bind functions
   }
 
   render() {
@@ -195,6 +184,7 @@ class App extends Component {
               files={this.state.files}
               captureFile={this.captureFile}
               uploadFile={this.uploadFile}
+              downloadFile={this.downloadFile}
             />
         }
       </div>
