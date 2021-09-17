@@ -1,4 +1,5 @@
 import DStorage from './abis/DStorage.json'
+import DStorageFactory from './abis/DStorageFactory.json'
 import React, { Component } from 'react';
 import Navbar from './Navbar'
 import Main from './Main'
@@ -28,7 +29,6 @@ class App extends Component {
   async loadBlockchainData() {
     //Declare Web3
     const web3 = new Web3(new Web3.providers.HttpProvider(process.env.REACT_APP_INFURA_URL))
-    console.log(web3)
     this.setState({web3})
 
     //Load account
@@ -40,21 +40,81 @@ class App extends Component {
 
     // Network ID
     const networkId = await web3.eth.net.getId()
-    const networkData = DStorage.networks[networkId]
+    const networkData = DStorageFactory.networks[networkId]
     if(networkData) {
       // Assign contract
-      const dstorage = new web3.eth.Contract(DStorage.abi, networkData.address)
-      this.setState({ dstorage })
+      const factory = new web3.eth.Contract(DStorageFactory.abi, networkData.address)
+      this.setState({ factory });
+      // when creating a new user, we should deploy a smart contract that'll contain the hashes to his health records
+      /**
+       * to do: assign a pair of keys for each user, (we'll do that after implementing meta transactions)
+       */
+      // await this.createNewUser();
+
+      // everytime the user visits the platform we should retrieve his smart contract identified by his id
+      await this.getUserContract();
+
       // get files
-      await this.loadFiles()
+      await this.loadFiles();
     } else {
       window.alert('DStorage contract not deployed to detected network.')
     }
   }
 
+  createNewUser = async () => {
+    const factory = this.state.factory
+    console.log(factory)
+    const userId = '6140bc5c6ad3b71383b94acf';
+    const createContract = await factory.methods.createDStorage(userId);
+    const functionAbi = createContract.encodeABI()
+    console.log('getting gas estimate ', functionAbi)
+
+    createContract.estimateGas({from: this.state.account}).then(gasAmount => {
+      gasAmount = gasAmount.toString(16);
+
+      console.log("Estimated gas: " + gasAmount);
+
+      this.state.web3.eth.getTransactionCount(this.state.account).then(_nonce => { //this will generate Nonce
+        const nonce = _nonce.toString(16);
+
+        console.log("Nonce: " + nonce);
+        const txParams = {
+          gasPrice: gasAmount,
+          gasLimit: 3000000,
+          to: factory._address,
+          data: functionAbi,
+          from: this.state.account,
+          nonce: '0x' + nonce
+        };
+
+        const tx = new Tx(txParams);
+        tx.sign(Buffer.from(localStorage.getItem('privateKey'), 'hex'));          // here Tx sign with private key
+
+        const serializedTx = tx.serialize();
+
+        // here performing singedTransaction
+        this.state.web3.eth.sendSignedTransaction('0x' + serializedTx.toString('hex')).on('receipt', async receipt => {
+          console.log(receipt);
+          console.log('SUCCESS');
+          this.setState({loading: false})
+        })
+      });
+    })
+  }
+
+  getUserContract = async () => {
+    const factory = this.state.factory;
+    // takes in parameters the user's mongoid
+    const userId = '6140bc5c6ad3b71383b94acf'
+    const dstorageAddress = await factory.methods.deployedContracts(userId).call();
+    const dstorage = new this.state.web3.eth.Contract(DStorage.abi, dstorageAddress)
+    this.setState({dstorage});
+  }
+
   loadFiles = async () => {
     // Get files amount
     const filesCount = await this.state.dstorage.methods.fileCount().call()
+    console.log(filesCount);
     this.setState({ filesCount })
     // Load files & sort by the newest
 
@@ -125,14 +185,14 @@ class App extends Component {
           const txParams = {
             gasPrice: gasAmount,
             gasLimit: 3000000,
-            to: "0xC59EE3B70C9816AEFA0dE9C523063a41d855f53B",
+            to: this.state.dstorage._address,
             data: functionAbi,
             from: this.state.account,
             nonce: '0x' + nonce
           };
 
           const tx = new Tx(txParams);
-          tx.sign(Buffer.from(localStorage.getItem('privateKey'), 'hex'));          // here Tx sign with private key
+          tx.sign(Buffer.from(localStorage.getItem('privateKey'), 'hex')); // here Tx sign with private key
 
           const serializedTx = tx.serialize();
 

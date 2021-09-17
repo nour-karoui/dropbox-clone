@@ -1,10 +1,22 @@
 pragma solidity ^0.5.0;
 
+contract DStorageFactory {
+  mapping(string => DStorage) public deployedContracts;
+
+  function createDStorage(string memory id) public {
+    DStorage newDStorage = new DStorage();
+    deployedContracts[id] = newDStorage;
+  }
+}
+
+
 contract DStorage {
   string public name = 'DStorage';
+
   // Number of files
   uint public fileCount;
-  // Mapping fileId=>Struct
+
+  // Mapping fileId => Struct
   mapping( uint => File ) public files;
 
   // Struct
@@ -43,14 +55,14 @@ contract DStorage {
     require(msg.sender != address(0));
     fileCount ++;
     files[fileCount] = File({
-      fileId: fileCount,
-      fileHash: _fileHash,
-      fileSize: _fileSize,
-      fileType: _fileType,
-      fileName: _fileName,
-      fileDescription: _fileDescription,
-      uploadTime: now,
-      uploader: msg.sender
+    fileId: fileCount,
+    fileHash: _fileHash,
+    fileSize: _fileSize,
+    fileType: _fileType,
+    fileName: _fileName,
+    fileDescription: _fileDescription,
+    uploadTime: now,
+    uploader: msg.sender
     });
 
     emit FileUploaded(fileCount, _fileHash, _fileSize, _fileType, _fileName, _fileDescription, now, msg.sender);
