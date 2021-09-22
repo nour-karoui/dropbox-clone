@@ -77,6 +77,6 @@ const uploadFile = async (buffer) => {
         .catch(error => {
             assert.ok(false);
         });
-}
+};
 
 

@@ -63,7 +63,7 @@ class App extends Component {
 
   createNewUser = async () => {
     const factory = this.state.factory
-    console.log(factory)
+
     const userId = '6140bc5c6ad3b71383b94acf';
     const createContract = await factory.methods.createDStorage(userId);
     const functionAbi = createContract.encodeABI()
