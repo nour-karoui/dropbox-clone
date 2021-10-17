@@ -22,6 +22,16 @@ const ipfs = ipfsClient({
 
 class App extends Component {
 
+  //Set states
+  constructor(props) {
+    super(props)
+    this.state = {
+      files: [],
+      loading: false,
+      userId: '6140bc5c6ad3b71383b94acf'
+    };
+  }
+
   async componentWillMount() {
     await this.loadBlockchainData()
   }
@@ -31,13 +41,6 @@ class App extends Component {
     const web3 = new Web3(new Web3.providers.HttpProvider(process.env.REACT_APP_INFURA_URL))
     this.setState({web3})
 
-    //Load account
-    localStorage.setItem('privateKey', process.env.REACT_APP_PRIVATE_KEY)
-    const account = web3.eth.accounts.privateKeyToAccount(localStorage.getItem('privateKey'))
-    const publicKey = EthCrypto.publicKeyByPrivateKey(localStorage.getItem('privateKey'))
-    this.setState({publicKey})
-    this.setState({account: account.address})
-
     // Network ID
     const networkId = await web3.eth.net.getId()
     const networkData = DStorageFactory.networks[networkId]
@@ -45,76 +48,105 @@ class App extends Component {
       // Assign contract
       const factory = new web3.eth.Contract(DStorageFactory.abi, networkData.address)
       this.setState({ factory });
+
+      let account;
+      let publicKey;
+      //Load account
+      if(localStorage.getItem('privateKey')) {
+        /**
+         * to do, get user id and put it in the state
+         */
+        account = web3.eth.accounts.privateKeyToAccount(localStorage.getItem('privateKey'))
+        publicKey = EthCrypto.publicKeyByPrivateKey(localStorage.getItem('privateKey'))
+      }
+      // create new account
+      else {
+        const userId = '616c7c9a847d553dbf8bb569';
+        this.setState({userId});
+        account = web3.eth.accounts.create();
+        console.log('new account');
+        console.log(account.address);
+        publicKey = EthCrypto.publicKeyByPrivateKey(account.privateKey);
+        localStorage.setItem('privateKey', account.privateKey.toString());
+      }
+
+      this.setState({publicKey})
+      this.setState({account: account.address})
       // when creating a new user, we should deploy a smart contract that'll contain the hashes to his health records
-      /**
-       * to do: assign a pair of keys for each user, (we'll do that after implementing meta transactions)
-       */
-      // await this.createNewUser();
+      await this.createUserSmartContract();
 
       // everytime the user visits the platform we should retrieve his smart contract identified by his id
       await this.getUserContract();
 
       // get files
-      await this.loadFiles();
+      if(this.state.dstorage) {
+        await this.loadFiles();
+      }
     } else {
       window.alert('DStorage contract not deployed to detected network.')
     }
   }
 
-  createNewUser = async () => {
+  createUserSmartContract = async () => {
     const factory = this.state.factory
 
-    const userId = '6140bc5c6ad3b71383b94acf';
+    const userId = this.state.userId;
     const createContract = await factory.methods.createDStorage(userId);
     const functionAbi = createContract.encodeABI()
-    console.log('getting gas estimate ', functionAbi)
+    const balance = await this.state.web3.eth.getBalance(this.state.account);
+    if(parseInt(balance)) {
+      createContract.estimateGas({from: this.state.account}).then(gasAmount => {
+        gasAmount = gasAmount.toString(16);
 
-    createContract.estimateGas({from: this.state.account}).then(gasAmount => {
-      gasAmount = gasAmount.toString(16);
+        console.log("Estimated gas: " + gasAmount);
 
-      console.log("Estimated gas: " + gasAmount);
+        this.state.web3.eth.getTransactionCount(this.state.account).then(_nonce => { //this will generate Nonce
+          const nonce = _nonce.toString(16);
 
-      this.state.web3.eth.getTransactionCount(this.state.account).then(_nonce => { //this will generate Nonce
-        const nonce = _nonce.toString(16);
+          console.log("Nonce: " + nonce);
+          const txParams = {
+            gasPrice: gasAmount,
+            gasLimit: 3000000,
+            to: factory._address,
+            data: functionAbi,
+            from: this.state.account,
+            nonce: '0x' + nonce
+          };
 
-        console.log("Nonce: " + nonce);
-        const txParams = {
-          gasPrice: gasAmount,
-          gasLimit: 3000000,
-          to: factory._address,
-          data: functionAbi,
-          from: this.state.account,
-          nonce: '0x' + nonce
-        };
+          const tx = new Tx(txParams);
+          tx.sign(Buffer.from(localStorage.getItem('privateKey'), 'hex'));          // here Tx sign with private key
 
-        const tx = new Tx(txParams);
-        tx.sign(Buffer.from(localStorage.getItem('privateKey'), 'hex'));          // here Tx sign with private key
+          const serializedTx = tx.serialize();
 
-        const serializedTx = tx.serialize();
-
-        // here performing singedTransaction
-        this.state.web3.eth.sendSignedTransaction('0x' + serializedTx.toString('hex')).on('receipt', async receipt => {
-          console.log(receipt);
-          console.log('SUCCESS');
-          this.setState({loading: false})
-        })
-      });
-    })
+          // here performing singedTransaction
+          this.state.web3.eth.sendSignedTransaction('0x' + serializedTx.toString('hex')).on('receipt', async receipt => {
+            console.log(receipt);
+            console.log('SUCCESS');
+            this.setState({loading: false})
+          })
+        });
+      })
+    } else {
+      alert('you need to fund your account with ether');
+    }
   }
 
   getUserContract = async () => {
     const factory = this.state.factory;
     // takes in parameters the user's mongoid
-    const userId = '6140bc5c6ad3b71383b94acf'
+    const userId = this.state.userId;
     const dstorageAddress = await factory.methods.deployedContracts(userId).call();
-    const dstorage = new this.state.web3.eth.Contract(DStorage.abi, dstorageAddress)
-    this.setState({dstorage});
+    if(!dstorageAddress.startsWith('0x000000000000000')) {
+      const dstorage = new this.state.web3.eth.Contract(DStorage.abi, dstorageAddress);
+      this.setState({dstorage});
+    } else {
+      alert('you have no deployed contracts yet, make sure to fund your account with ether !');
+    }
   }
 
   loadFiles = async () => {
     // Get files amount
     const filesCount = await this.state.dstorage.methods.fileCount().call()
-    console.log(filesCount);
     this.setState({ filesCount })
     // Load files & sort by the newest
 
@@ -140,71 +172,75 @@ class App extends Component {
         type: file.type,
         name: file.name
       })
-      console.log('buffer', this.state.buffer)
     }
   }
 
   //Upload File
   uploadFile = async description => {
-    console.log('submitting file to ipfs')
-    const encrypted = encrypt(this.state.publicKey, this.state.buffer)
-    this.setState({loading: true})
+    const balance = await this.state.web3.eth.getBalance(this.state.account);
+    if(parseInt(balance)) {
+      console.log('submitting file to ipfs')
+      const encrypted = encrypt(this.state.publicKey, this.state.buffer)
+      this.setState({loading: true})
 
-    //Add file to the IPFS
-    ipfs.add(encrypted, (error, result) => {
-      console.log('IPFS RESULT', result)
-      //Check If error
-      //Return error
+      //Add file to the IPFS
+      ipfs.add(encrypted, (error, result) => {
+        console.log('IPFS RESULT', result)
+        //Check If error
+        //Return error
 
-      if(error) {
-        console.log(error)
-        this.setState({loading: false})
-        return
-      }
-      //Set state to loading
+        if(error) {
+          console.log(error)
+          this.setState({loading: false})
+          return
+        }
+        //Set state to loading
 
-      //Assign value for the file without extension
-      if(this.state.type === '') {
-        this.setState({type: 'none'})
-      }
+        //Assign value for the file without extension
+        if(this.state.type === '') {
+          this.setState({type: 'none'})
+        }
 
-      //Call smart contract uploadFile function
-      const uploadFileFunction = this.state.dstorage.methods.uploadFile(result[0].hash, result[0].size, this.state.type, this.state.name, description)
-      const functionAbi = uploadFileFunction.encodeABI()
-      console.log('getting gas estimate ', functionAbi)
+        //Call smart contract uploadFile function
+        const uploadFileFunction = this.state.dstorage.methods.uploadFile(result[0].hash, result[0].size, this.state.type, this.state.name, description)
+        const functionAbi = uploadFileFunction.encodeABI()
+        console.log('getting gas estimate ', functionAbi)
 
-      uploadFileFunction.estimateGas({from: this.state.account}).then(gasAmount => {
-        gasAmount = gasAmount.toString(16);
+        uploadFileFunction.estimateGas({from: this.state.account}).then(gasAmount => {
+          gasAmount = gasAmount.toString(16);
 
-        console.log("Estimated gas: " + gasAmount);
+          console.log("Estimated gas: " + gasAmount);
 
-        this.state.web3.eth.getTransactionCount(this.state.account).then(_nonce => { //this will generate Nonce
-          const nonce = _nonce.toString(16);
+          this.state.web3.eth.getTransactionCount(this.state.account).then(_nonce => { //this will generate Nonce
+            const nonce = _nonce.toString(16);
 
-          console.log("Nonce: " + nonce);
-          const txParams = {
-            gasPrice: gasAmount,
-            gasLimit: 3000000,
-            to: this.state.dstorage._address,
-            data: functionAbi,
-            from: this.state.account,
-            nonce: '0x' + nonce
-          };
+            console.log("Nonce: " + nonce);
+            const txParams = {
+              gasPrice: gasAmount,
+              gasLimit: 3000000,
+              to: this.state.dstorage._address,
+              data: functionAbi,
+              from: this.state.account,
+              nonce: '0x' + nonce
+            };
 
-          const tx = new Tx(txParams);
-          tx.sign(Buffer.from(localStorage.getItem('privateKey'), 'hex')); // here Tx sign with private key
+            const tx = new Tx(txParams);
+            tx.sign(Buffer.from(localStorage.getItem('privateKey'), 'hex')); // here Tx sign with private key
 
-          const serializedTx = tx.serialize();
+            const serializedTx = tx.serialize();
 
-          // here performing singedTransaction
-          this.state.web3.eth.sendSignedTransaction('0x' + serializedTx.toString('hex')).on('receipt', async receipt => {
-            console.log(receipt);
-            this.setState({loading: false})
-            window.location.reload()
-          })
-        });
+            // here performing singedTransaction
+            this.state.web3.eth.sendSignedTransaction('0x' + serializedTx.toString('hex')).on('receipt', async receipt => {
+              console.log(receipt);
+              this.setState({loading: false})
+              window.location.reload()
+            })
+          });
+        })
       })
-    })
+    } else {
+      alert('you cannot upload any files, you do not have ether');
+    }
   }
 
   // Decrypt and download file
@@ -223,15 +259,6 @@ class App extends Component {
         window.open(url);
       })
     });
-  }
-
-  //Set states
-  constructor(props) {
-    super(props)
-    this.state = {
-      files: [],
-      loading: false
-    }
   }
 
   render() {
