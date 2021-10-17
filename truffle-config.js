@@ -12,6 +12,7 @@ module.exports = {
       network_id: "*" // Match any network id
     },
     rinkeby: {
+      networkCheckTimeout: 10000,
       provider: function() {
         return new HDWalletProvider(
            ['b63e3f7051cf1226b82d844f1ac8b02ec7f03c2eb176d2d1f2df46a6a4836584'], // Array of account private keys
@@ -23,10 +24,11 @@ module.exports = {
       network_id: 4
     },
   },
-  contracts_directory: './src/contracts/',
+  contracts_directory: './contracts',
   contracts_build_directory: './src/components/abis/',
   compilers: {
     solc: {
+      version: "^0.7.6",
       optimizer: {
         enabled: true,
         runs: 200
