@@ -23,7 +23,7 @@ module.exports = {
       network_id: 4
     },
   },
-  contracts_directory: './src/contracts/',
+  contracts_directory: './contracts/',
   contracts_build_directory: './src/components/abis/',
   compilers: {
     solc: {

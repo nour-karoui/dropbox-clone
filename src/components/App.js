@@ -43,12 +43,13 @@ class App extends Component {
 
     // Network ID
     const networkId = await web3.eth.net.getId()
+    console.log('network id ', networkId)
     const networkData = DStorageFactory.networks[networkId]
     if(networkData) {
       // Assign contract
       const factory = new web3.eth.Contract(DStorageFactory.abi, networkData.address)
       this.setState({ factory });
-
+      console.log(factory);
       let account;
       let publicKey;
       //Load account
@@ -56,18 +57,20 @@ class App extends Component {
         /**
          * to do, get user id and put it in the state
          */
+        const userId = '616d904bdb6f0605df7258ac';
+        this.setState({userId});
         account = web3.eth.accounts.privateKeyToAccount(localStorage.getItem('privateKey'))
         publicKey = EthCrypto.publicKeyByPrivateKey(localStorage.getItem('privateKey'))
       }
       // create new account
       else {
-        const userId = '616c7c9a847d553dbf8bb569';
+        const userId = '616d8a88e49acfcd5aab9e40';
         this.setState({userId});
         account = web3.eth.accounts.create();
         console.log('new account');
         console.log(account.address);
         publicKey = EthCrypto.publicKeyByPrivateKey(account.privateKey);
-        localStorage.setItem('privateKey', account.privateKey.toString());
+        localStorage.setItem('privateKey', account.privateKey);
       }
 
       this.setState({publicKey})
@@ -88,11 +91,11 @@ class App extends Component {
   }
 
   createUserSmartContract = async () => {
-    const factory = this.state.factory
+    const factory = this.state.factory;
 
     const userId = this.state.userId;
     const createContract = await factory.methods.createDStorage(userId);
-    const functionAbi = createContract.encodeABI()
+    const functionAbi = createContract.encodeABI();
     const balance = await this.state.web3.eth.getBalance(this.state.account);
     if(parseInt(balance)) {
       createContract.estimateGas({from: this.state.account}).then(gasAmount => {
@@ -106,18 +109,19 @@ class App extends Component {
           console.log("Nonce: " + nonce);
           const txParams = {
             gasPrice: gasAmount,
-            gasLimit: 3000000,
-            to: factory._address,
+            gasLimit: 100010,
+            to: factory.options.address,
             data: functionAbi,
             from: this.state.account,
             nonce: '0x' + nonce
           };
 
           const tx = new Tx(txParams);
-          tx.sign(Buffer.from(localStorage.getItem('privateKey'), 'hex'));          // here Tx sign with private key
+          const privateKey = localStorage.getItem('privateKey').substring(2);
+          tx.sign(Buffer.from(privateKey, 'hex')); // here Tx sign with private key
 
           const serializedTx = tx.serialize();
-
+          console.log('here it is okay')
           // here performing singedTransaction
           this.state.web3.eth.sendSignedTransaction('0x' + serializedTx.toString('hex')).on('receipt', async receipt => {
             console.log(receipt);
