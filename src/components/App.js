@@ -179,7 +179,7 @@ class App extends Component {
         console.log("Estimated gas: " + gasAmount);
 
         this.state.web3.eth.getTransactionCount(this.state.account).then(_nonce => { //this will generate Nonce
-          const nonce = _nonce.toString(16);
+          const nonce = (_nonce + 1).toString(16);
 
           console.log("Nonce: " + nonce);
           const txParams = {

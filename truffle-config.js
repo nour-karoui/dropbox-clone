@@ -11,16 +11,16 @@ module.exports = {
       port: 7545,
       network_id: "*" // Match any network id
     },
-    rinkeby: {
+    ropsten: {
       provider: function() {
         return new HDWalletProvider(
-           ['b63e3f7051cf1226b82d844f1ac8b02ec7f03c2eb176d2d1f2df46a6a4836584'], // Array of account private keys
-          `https://rinkeby.infura.io/v3/aff0fe260d2b4c4f8aca7d426d1b90f8`// Url to an Ethereum Node
+           ['07015c46d74a515b0eff5466a05345bfbc1db8af4f0e8081af1e8e4c8aedf58d'], // Array of account private keys
+          `https://ropsten.infura.io/v3/aff0fe260d2b4c4f8aca7d426d1b90f8`// Url to an Ethereum Node
         )
       },
       gas: 5000000,
       gasPrice: 25000000000,
-      network_id: 4
+      network_id: 3
     },
   },
   contracts_directory: './src/contracts/',
